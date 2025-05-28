@@ -36,3 +36,17 @@ export type PaymentInfo = {
   accountName?: string;
   accountNumber?: string;
 };
+export type ReceiptSummary = {
+  participantId: string;
+  participantName: string;
+  items: {
+    id: string;
+    name: string;
+    price: number;
+    sharedWith: number;
+  }[];
+  itemsTotal: number;
+  taxShare: number;
+  tipShare: number;
+  total: number;
+};
