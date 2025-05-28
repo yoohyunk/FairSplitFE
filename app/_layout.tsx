@@ -1,29 +1,102 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { colors } from "@/constants/Colors";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { useFonts } from "expo-font";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+export const unstable_settings = {
+  initialRouteName: "(tabs)",
+};
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+  const [loaded, error] = useFonts({
+    ...FontAwesome.font,
   });
 
+  useEffect(() => {
+    if (error) {
+      console.error(error);
+      throw error;
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
   if (!loaded) {
-    // Async font loading only occurs in development.
     return null;
   }
 
+  return <RootLayoutNav />;
+}
+
+function RootLayoutNav() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+    <>
+      <StatusBar style="dark" />
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerTintColor: colors.text,
+          headerTitleStyle: {
+            fontWeight: "600",
+          },
+          contentStyle: {
+            backgroundColor: colors.background,
+          },
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
+        {/* auth screens temporarily removed until implemented */}
+        <Stack.Screen name="profile" options={{ headerShown: true }} />
+        <Stack.Screen
+          name="receipt/[id]"
+          options={{ title: "Receipt Details", presentation: "card" }}
+        />
+        <Stack.Screen
+          name="receipt/edit/[id]"
+          options={{ title: "Edit Receipt", presentation: "modal" }}
+        />
+        <Stack.Screen
+          name="receipt/items/[id]"
+          options={{ title: "Receipt Items", presentation: "card" }}
+        />
+        <Stack.Screen
+          name="receipt/participants/[id]"
+          options={{ title: "Participants", presentation: "card" }}
+        />
+        <Stack.Screen
+          name="receipt/summary/[id]"
+          options={{ title: "Split Summary", presentation: "card" }}
+        />
+        <Stack.Screen
+          name="scan"
+          options={{ title: "Scan Receipt", presentation: "fullScreenModal" }}
+        />
+        <Stack.Screen
+          name="modal"
+          options={{ title: "Information", presentation: "modal" }}
+        />
+        <Stack.Screen name="settings" options={{ title: "Settings" }} />
+        <Stack.Screen
+          name="groups/[id]"
+          options={{ title: "Group Details", presentation: "card" }}
+        />
+        <Stack.Screen
+          name="friends/[id]"
+          options={{ title: "Friend Details", presentation: "card" }}
+        />
       </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    </>
   );
 }
