@@ -1,75 +1,145 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { Button } from "@/components/Button";
+import { EmptyState } from "@/components/EmptyState";
+import { ReceiptCard } from "@/components/ReceiptCard";
+import { colors } from "@/constants/Colors";
+import { useReceiptStore } from "@/hooks/useReceiptStore";
+import { useRouter } from "expo-router";
+import { Camera } from "lucide-react-native";
+import React from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const receipts = useReceiptStore((state) => state.receipts);
+
+  // Get only recent receipts (last 5)
+  const recentReceipts = receipts
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    )
+    .slice(0, 5);
+
+  // Get pending receipts
+  const pendingReceipts = receipts.filter(
+    (receipt) => receipt.status === "pending"
+  );
+
+  const handleScanPress = () => {
+    router.push("/scan");
+  };
+
+  const handleViewAllPress = () => {
+    router.push("/history");
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+    >
+      <View style={styles.header}>
+        <Text style={styles.title}>Split the Bill</Text>
+        <Text style={styles.subtitle}>
+          Scan receipts and split expenses fairly
+        </Text>
+      </View>
+
+      <View style={styles.actionsContainer}>
+        <Button
+          title="Scan Receipt"
+          onPress={handleScanPress}
+          icon={<Camera size={18} color={colors.card} />}
+          size="large"
+          fullWidth
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      </View>
+
+      {pendingReceipts.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Pending Approval</Text>
+          </View>
+
+          {pendingReceipts.map((receipt) => (
+            <ReceiptCard key={receipt.id} receipt={receipt} />
+          ))}
+        </View>
+      )}
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Receipts</Text>
+          {receipts.length > 5 && (
+            <TouchableOpacity onPress={handleViewAllPress}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {recentReceipts.length > 0 ? (
+          recentReceipts.map((receipt) => (
+            <ReceiptCard key={receipt.id} receipt={receipt} />
+          ))
+        ) : (
+          <EmptyState
+            type="receipts"
+            onAction={handleScanPress}
+            message="Scan your first receipt to get started"
+          />
+        )}
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  stepContainer: {
-    gap: 8,
+  contentContainer: {
+    padding: 16,
+  },
+  header: {
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: colors.text,
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  subtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  actionsContainer: {
+    marginBottom: 24,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: "500",
   },
 });
