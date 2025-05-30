@@ -1,8 +1,8 @@
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { colors } from "@/constants/Colors";
-import { useFriendsStore } from "@/hooks/useFriendsStore";
-import { useGroupsStore } from "@/hooks/useGroupsStore";
+import { Friend, useFriendsStore } from "@/hooks/useFriendsStore";
+import { Group, useGroupsStore } from "@/hooks/useGroupsStore";
 import { useRouter } from "expo-router";
 import {
   ChevronRight,
@@ -17,57 +17,108 @@ import React, { useState } from "react";
 import {
   Alert,
   FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 
-export default function GroupsScreen() {
-  const router = useRouter();
-  const { groups } = useGroupsStore();
-  const { friends } = useFriendsStore();
+type CreateGroupModalProps = {
+  visible: boolean;
+  onClose: () => void;
+  onCreateGroup: (name: string) => void;
+};
 
-  const [activeTab, setActiveTab] = useState<"groups" | "friends">("groups");
-  const [isCreateGroupModalVisible, setIsCreateGroupModalVisible] =
-    useState(false);
-  const [isAddFriendModalVisible, setIsAddFriendModalVisible] = useState(false);
+const CreateGroupModal = ({
+  visible,
+  onClose,
+  onCreateGroup,
+}: CreateGroupModalProps) => {
   const [newGroupName, setNewGroupName] = useState("");
-  const [newFriendName, setNewFriendName] = useState("");
-  const [newFriendPhone, setNewFriendPhone] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const { addGroup } = useGroupsStore();
-  const { addFriend } = useFriendsStore();
-
-  const filteredGroups = groups.filter((group) =>
-    group.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredFriends = friends.filter(
-    (friend) =>
-      friend.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      friend.phone.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleCreateGroup = () => {
+  const handleCreate = () => {
     if (!newGroupName.trim()) {
       Alert.alert("Error", "Please enter a group name");
       return;
     }
 
-    addGroup({
-      name: newGroupName.trim(),
-      members: [{ id: "1", name: "You" }],
-    });
-
+    onCreateGroup(newGroupName.trim());
     setNewGroupName("");
-    setIsCreateGroupModalVisible(false);
   };
 
-  const handleAddFriend = () => {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.modalContainer}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Create New Group</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                <X size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Group Name</Text>
+              <TextInput
+                style={styles.input}
+                value={newGroupName}
+                onChangeText={setNewGroupName}
+                placeholder="Enter group name"
+                placeholderTextColor={colors.textLight}
+                autoFocus
+              />
+            </View>
+
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancel"
+                onPress={onClose}
+                variant="outline"
+                containerStyle={{ flex: 1, marginHorizontal: 4 }}
+              />
+              <Button
+                title="Create"
+                onPress={handleCreate}
+                containerStyle={{ flex: 1, marginHorizontal: 4 }}
+              />
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
+
+type AddFriendModalProps = {
+  visible: boolean;
+  onClose: () => void;
+  onAddFriend: (name: string, phone: string) => void;
+};
+
+const AddFriendModal = ({
+  visible,
+  onClose,
+  onAddFriend,
+}: AddFriendModalProps) => {
+  const [newFriendName, setNewFriendName] = useState("");
+  const [newFriendPhone, setNewFriendPhone] = useState("");
+
+  const handleAdd = () => {
     if (!newFriendName.trim()) {
       Alert.alert("Error", "Please enter a friend name");
       return;
@@ -78,60 +129,180 @@ export default function GroupsScreen() {
       return;
     }
 
-    addFriend({
-      name: newFriendName.trim(),
-      phone: newFriendPhone.trim(),
-    });
-
+    onAddFriend(newFriendName.trim(), newFriendPhone.trim());
     setNewFriendName("");
     setNewFriendPhone("");
-    setIsAddFriendModalVisible(false);
   };
 
-  const renderGroupItem = (group) => (
-    <TouchableOpacity
-      key={group.id}
-      style={styles.card}
-      onPress={() => router.push(`/groups/${group.id}`)}
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
     >
-      <View style={styles.iconContainer}>
-        <Users size={24} color={colors.primary} />
-      </View>
-      <View style={styles.info}>
-        <Text style={styles.name}>{group.name}</Text>
-        <View style={styles.stats}>
-          <View style={styles.stat}>
-            <User size={14} color={colors.textSecondary} />
-            <Text style={styles.statText}>{group.members.length} members</Text>
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add New Friend</Text>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <X size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
-          {group.receipts > 0 && (
-            <View style={styles.stat}>
-              <Receipt size={14} color={colors.textSecondary} />
-              <Text style={styles.statText}>{group.receipts} receipts</Text>
-            </View>
-          )}
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Friend&apos;s Name</Text>
+            <TextInput
+              style={styles.input}
+              value={newFriendName}
+              onChangeText={setNewFriendName}
+              placeholder="Enter friend's name"
+              placeholderTextColor={colors.textLight}
+              autoFocus
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Phone Number</Text>
+            <TextInput
+              style={styles.input}
+              value={newFriendPhone}
+              onChangeText={setNewFriendPhone}
+              placeholder="(555) 555-5555"
+              placeholderTextColor={colors.textLight}
+              keyboardType="phone-pad"
+            />
+          </View>
+
+          <View style={styles.modalActions}>
+            <Button
+              title="Cancel"
+              onPress={onClose}
+              variant="outline"
+              containerStyle={{ flex: 1, marginHorizontal: 4 }}
+            />
+            <Button
+              title="Add Friend"
+              onPress={handleAdd}
+              containerStyle={{ flex: 1, marginHorizontal: 4 }}
+            />
+          </View>
         </View>
       </View>
-      <ChevronRight size={20} color={colors.textLight} />
-    </TouchableOpacity>
+    </Modal>
+  );
+};
+
+type GroupItemProps = {
+  group: Group;
+  onPress: () => void;
+};
+
+const GroupItem = ({ group, onPress }: GroupItemProps) => (
+  <TouchableOpacity style={styles.card} onPress={onPress}>
+    <View style={styles.iconContainer}>
+      <Users size={24} color={colors.primary} />
+    </View>
+    <View style={styles.info}>
+      <Text style={styles.name}>{group.name}</Text>
+      <View style={styles.stats}>
+        <View style={styles.stat}>
+          <User size={14} color={colors.textSecondary} />
+          <Text style={styles.statText}>{group.members.length} members</Text>
+        </View>
+        {group.receipts > 0 && (
+          <View style={styles.stat}>
+            <Receipt size={14} color={colors.textSecondary} />
+            <Text style={styles.statText}>{group.receipts} receipts</Text>
+          </View>
+        )}
+      </View>
+    </View>
+    <ChevronRight size={20} color={colors.textLight} />
+  </TouchableOpacity>
+);
+
+type FriendItemProps = {
+  friend: Friend;
+  onPress: () => void;
+};
+
+const FriendItem = ({ friend, onPress }: FriendItemProps) => (
+  <TouchableOpacity style={styles.card} onPress={onPress}>
+    <View style={styles.iconContainer}>
+      <User size={24} color={colors.primary} />
+    </View>
+    <View style={styles.info}>
+      <Text style={styles.name}>{friend.name}</Text>
+      <Text style={styles.phone}>{friend.phone}</Text>
+    </View>
+    <ChevronRight size={20} color={colors.textLight} />
+  </TouchableOpacity>
+);
+
+type SearchBarProps = {
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder: string;
+};
+
+const SearchBar = ({ value, onChangeText, placeholder }: SearchBarProps) => (
+  <View style={styles.searchContainer}>
+    <Search size={18} color={colors.textSecondary} />
+    <TextInput
+      style={styles.searchInput}
+      placeholder={placeholder}
+      placeholderTextColor={colors.textLight}
+      value={value}
+      onChangeText={onChangeText}
+    />
+    {value.length > 0 && (
+      <TouchableOpacity onPress={() => onChangeText("")}>
+        <X size={18} color={colors.textSecondary} />
+      </TouchableOpacity>
+    )}
+  </View>
+);
+
+export default function GroupsScreen() {
+  const router = useRouter();
+  const { groups } = useGroupsStore();
+  const { friends } = useFriendsStore();
+
+  const [activeTab, setActiveTab] = useState<"groups" | "friends">("groups");
+  const [isCreateGroupModalVisible, setIsCreateGroupModalVisible] =
+    useState(false);
+  const [isAddFriendModalVisible, setIsAddFriendModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { addGroup } = useGroupsStore();
+  const { addFriend } = useFriendsStore();
+
+  const filteredGroups = groups.filter((group: Group) =>
+    group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const renderFriendItem = (friend) => (
-    <TouchableOpacity
-      key={friend.id}
-      style={styles.card}
-      onPress={() => router.push(`/friends/${friend.id}`)}
-    >
-      <View style={styles.iconContainer}>
-        <User size={24} color={colors.primary} />
-      </View>
-      <View style={styles.info}>
-        <Text style={styles.name}>{friend.name}</Text>
-        <Text style={styles.phone}>{friend.phone}</Text>
-      </View>
-      <ChevronRight size={20} color={colors.textLight} />
-    </TouchableOpacity>
+  const filteredFriends = friends.filter(
+    (friend: Friend) =>
+      friend.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      friend.phone.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleCreateGroup = (name: string) => {
+    addGroup({
+      name,
+      members: [{ id: "1", name: "You" }],
+    });
+    setIsCreateGroupModalVisible(false);
+  };
+
+  const handleAddFriend = (name: string, phone: string) => {
+    addFriend({
+      name,
+      phone,
+    });
+    setIsAddFriendModalVisible(false);
+  };
 
   return (
     <View style={styles.container}>
@@ -194,29 +365,24 @@ export default function GroupsScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchContainer}>
-        <Search size={18} color={colors.textSecondary} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder={`Search ${
-            activeTab === "groups" ? "groups" : "friends"
-          }...`}
-          placeholderTextColor={colors.textLight}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <X size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-        )}
-      </View>
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder={`Search ${
+          activeTab === "groups" ? "groups" : "friends"
+        }...`}
+      />
 
       {activeTab === "groups" ? (
         filteredGroups.length > 0 ? (
           <FlatList
             data={filteredGroups}
-            renderItem={({ item }) => renderGroupItem(item)}
+            renderItem={({ item }) => (
+              <GroupItem
+                group={item}
+                onPress={() => router.push(`/groups/${item.id}` as any)}
+              />
+            )}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
           />
@@ -234,7 +400,12 @@ export default function GroupsScreen() {
       ) : filteredFriends.length > 0 ? (
         <FlatList
           data={filteredFriends}
-          renderItem={({ item }) => renderFriendItem(item)}
+          renderItem={({ item }) => (
+            <FriendItem
+              friend={item}
+              onPress={() => router.push(`/friends/${item.id}` as any)}
+            />
+          )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
         />
@@ -250,113 +421,17 @@ export default function GroupsScreen() {
         />
       )}
 
-      {/* Create Group Modal */}
-      <Modal
+      <CreateGroupModal
         visible={isCreateGroupModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsCreateGroupModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create New Group</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setIsCreateGroupModalVisible(false)}
-              >
-                <X size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
+        onClose={() => setIsCreateGroupModalVisible(false)}
+        onCreateGroup={handleCreateGroup}
+      />
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Group Name</Text>
-              <TextInput
-                style={styles.input}
-                value={newGroupName}
-                onChangeText={setNewGroupName}
-                placeholder="Enter group name"
-                placeholderTextColor={colors.textLight}
-                autoFocus
-              />
-            </View>
-
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancel"
-                onPress={() => setIsCreateGroupModalVisible(false)}
-                variant="outline"
-                containerStyle={{ flex: 1, marginHorizontal: 4 }}
-              />
-              <Button
-                title="Create"
-                onPress={handleCreateGroup}
-                containerStyle={{ flex: 1, marginHorizontal: 4 }}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Add Friend Modal */}
-      <Modal
+      <AddFriendModal
         visible={isAddFriendModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsAddFriendModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add New Friend</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setIsAddFriendModalVisible(false)}
-              >
-                <X size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Friend's Name</Text>
-              <TextInput
-                style={styles.input}
-                value={newFriendName}
-                onChangeText={setNewFriendName}
-                placeholder="Enter friend's name"
-                placeholderTextColor={colors.textLight}
-                autoFocus
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                value={newFriendPhone}
-                onChangeText={setNewFriendPhone}
-                placeholder="(555) 555-5555"
-                placeholderTextColor={colors.textLight}
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancel"
-                onPress={() => setIsAddFriendModalVisible(false)}
-                variant="outline"
-                containerStyle={{ flex: 1, marginHorizontal: 4 }}
-              />
-              <Button
-                title="Add Friend"
-                onPress={handleAddFriend}
-                containerStyle={{ flex: 1, marginHorizontal: 4 }}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setIsAddFriendModalVisible(false)}
+        onAddFriend={handleAddFriend}
+      />
     </View>
   );
 }
@@ -482,6 +557,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
+    paddingBottom: Platform.OS === "ios" ? 40 : 20,
   },
   modalHeader: {
     flexDirection: "row",
