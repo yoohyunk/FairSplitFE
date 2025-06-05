@@ -25,19 +25,19 @@ import {
 export default function ProfileScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const isAuthenticated = true;
-  // const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  // const isAuthenticated = true;
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const handleSignIn = () => {
-    router.push("/auth/login");
+    router.push("/(auth)/login");
   };
 
   const handleEditProfile = () => {
-    router.push("/auth/profile");
+    router.push("/(auth)/profile");
   };
 
   const handlePaymentMethods = () => {
-    router.push("/profile/payment-methods");
+    router.push("/(profile)/payment-methods");
   };
 
   const renderProfileOption = (
