@@ -127,17 +127,19 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || loading}
       activeOpacity={0.8}
     >
-      {loading ? (
-        <ActivityIndicator
-          color={variant === "primary" ? colors.card : colors.primary}
-          size={size === "small" ? "small" : "small"}
-        />
-      ) : (
-        <View style={styles.contentContainer}>
-          {icon && <View style={styles.iconContainer}>{icon}</View>}
-          <Text style={getTextStyle()}>{title}</Text>
-        </View>
-      )}
+      <View style={styles.contentContainer}>
+        {loading ? (
+          <ActivityIndicator
+            color={variant === "primary" ? colors.card : colors.primary}
+            size="small"
+          />
+        ) : (
+          <>
+            {icon && <View style={styles.iconContainer}>{icon}</View>}
+            <Text style={getTextStyle()}>{title}</Text>
+          </>
+        )}
+      </View>
     </TouchableOpacity>
   );
 };

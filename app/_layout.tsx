@@ -57,8 +57,8 @@ function RootLayoutNav() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        {/* auth screens temporarily removed until implemented */}
-        <Stack.Screen name="profile" options={{ headerShown: true }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(profile)" options={{ headerShown: false }} />
         <Stack.Screen
           name="receipt/[id]"
           options={{ title: "Receipt Details", presentation: "card" }}
