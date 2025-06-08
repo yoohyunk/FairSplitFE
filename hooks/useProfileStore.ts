@@ -125,8 +125,19 @@ export const useProfileStore = create<
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to update profile");
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || "Failed to update profile");
+        } else {
+          const text = await response.text();
+          throw new Error(`Server error: ${response.status} - ${text}`);
+        }
+      }
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response format from server");
       }
 
       const updatedProfile = await response.json();
@@ -140,48 +151,49 @@ export const useProfileStore = create<
   },
 
   // React Native 환경에 맞게 Blob 변환 후 업로드
-  uploadAvatar: async (file) => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${Date.now()}-${Math.random()
-      .toString(36)
-      .substring(2)}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
-
-    // 1. 로컬 파일을 base64로 읽기
-    const base64 = await FileSystem.readAsStringAsync(file.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    // 2. base64를 buffer로 변환 (react-native 환경에서는 Buffer 라이브러리 사용)
-    const buffer = Buffer.from(base64, "base64");
-
-    // 3. supabase 스토리지에 buffer 업로드
-    const { data, error } = await supabase.storage
-      .from("profile-pic")
-      .upload(filePath, buffer, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.type,
+  uploadAvatar: async (file: { uri: string; name: string; type: string }) => {
+    // Convert to Blob for React Native environment
+    try {
+      // 1. Read local file as base64
+      const base64 = await FileSystem.readAsStringAsync(file.uri, {
+        encoding: FileSystem.EncodingType.Base64,
       });
 
-    console.log("Supabase upload error:", error);
-    console.log("Supabase upload data:", data);
+      // 2. Convert base64 to buffer (using Buffer library in react-native environment)
+      const buffer = Buffer.from(base64, "base64");
 
-    if (error) {
+      // 3. Upload buffer to supabase storage
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2)}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from("profile-pic")
+        .upload(filePath, buffer, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
+
+      console.log("Supabase upload error:", error);
+      console.log("Supabase upload data:", data);
+
+      if (error) {
+        throw error;
+      }
+
+      // 4. Get public URL of uploaded file
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("profile-pic").getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
       throw error;
     }
-
-    // 4. 업로드된 파일 공개 URL 가져오기
-    const {
-      data: { publicUrl },
-      error: urlError,
-    } = supabase.storage.from("profile-pic").getPublicUrl(filePath);
-
-    if (urlError) {
-      throw urlError;
-    }
-
-    return publicUrl;
   },
 
   updateProfileWithAvatar: async (

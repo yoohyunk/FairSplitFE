@@ -19,7 +19,7 @@ export default function ProfileSetupScreen() {
   const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const user = useAuthStore((state) => state.user);
-  const { createProfile } = useProfileStore();
+  const { updateProfile } = useProfileStore();
 
   const handleSubmit = async () => {
     if (!username.trim()) {
@@ -29,7 +29,7 @@ export default function ProfileSetupScreen() {
 
     setIsLoading(true);
     try {
-      await createProfile(username.trim());
+      await updateProfile(username.trim());
       router.replace("/(tabs)");
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to create profile");

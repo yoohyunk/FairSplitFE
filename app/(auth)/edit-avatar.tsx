@@ -47,31 +47,31 @@ export default function EditAvatarScreen() {
       Alert.alert("Error", "Please select an image first");
       return;
     }
+
     setIsLoading(true);
     try {
-      // 로컬 파일을 base64로 읽기
+      // Read local file as base64
       const base64 = await FileSystem.readAsStringAsync(selectedImage, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // base64 데이터를 blob으로 변환
+      // Convert base64 data to blob
       const blob = await (
         await fetch(`data:image/jpeg;base64,${base64}`)
       ).blob();
 
-      console.log("blob size:", blob.size); // 0이면 문제 있음
+      console.log("blob size:", blob.size); // Check if size is 0 (indicates problem)
       console.log("blob type:", blob.type);
 
-      // supabase 업로드 함수에 맞는 객체 생성
+      // Create object compatible with supabase upload function
       const file = {
         uri: selectedImage,
         name: "avatar.jpg",
         type: blob.type || "image/jpeg",
       };
 
-      // 프로필 업데이트 (avatar 포함)
+      // Update profile with new avatar
       await updateProfileWithAvatar(profile?.username || "", file);
-
       router.back();
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to update avatar");
