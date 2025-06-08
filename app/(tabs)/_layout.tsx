@@ -12,86 +12,92 @@ export default function TabLayout() {
   };
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textLight,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          height: 60,
-          paddingBottom: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "500",
-        },
-        headerStyle: {
-          backgroundColor: colors.background,
-        },
-        headerTitleStyle: {
-          fontWeight: "600",
-          color: colors.text,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color }) => <Home size={22} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: "History",
-          tabBarIcon: ({ color }) => <History size={22} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="scan-tab"
-        options={{
-          title: "Scan",
-          tabBarIcon: ({ color }) => (
-            <View style={styles.scanButtonContainer}>
-              <TouchableOpacity
-                style={styles.scanButton}
-                onPress={handleScanPress}
-              >
-                <Camera size={22} color={colors.card} />
-              </TouchableOpacity>
-            </View>
-          ),
-        }}
-        listeners={{
-          tabPress: (e) => {
-            // Prevent default action
-            e.preventDefault();
-            // Navigate to scan screen
-            router.push("/scan");
+    <View style={styles.container}>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textLight,
+          tabBarStyle: {
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
+            height: 60,
+            paddingBottom: 8,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: "500",
+          },
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerTitleStyle: {
+            fontWeight: "600",
+            color: colors.text,
           },
         }}
-      />
-      <Tabs.Screen
-        name="groups"
-        options={{
-          title: "Groups",
-          tabBarIcon: ({ color }) => <Users size={22} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color }) => <User size={22} color={color} />,
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ color }) => <Home size={22} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="history"
+          options={{
+            title: "History",
+            tabBarIcon: ({ color }) => <History size={22} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="scan-tab"
+          options={{
+            title: "Scan",
+            tabBarIcon: ({ color }) => (
+              <View style={styles.scanButtonContainer}>
+                <TouchableOpacity
+                  style={styles.scanButton}
+                  onPress={handleScanPress}
+                >
+                  <Camera size={22} color={colors.card} />
+                </TouchableOpacity>
+              </View>
+            ),
+          }}
+          listeners={{
+            tabPress: (e) => {
+              // Prevent default action
+              e.preventDefault();
+              // Navigate to scan screen
+              router.push("/scan");
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="groups"
+          options={{
+            title: "Groups",
+            tabBarIcon: ({ color }) => <Users size={22} color={color} />,
+          }}
+        />
+
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "Profile",
+            tabBarIcon: ({ color }) => <User size={22} color={color} />,
+          }}
+        />
+      </Tabs>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   scanButtonContainer: {
     position: "absolute",
     top: -10,

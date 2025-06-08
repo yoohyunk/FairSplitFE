@@ -1,20 +1,26 @@
+import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
 import { colors } from "@/constants/Colors";
 import { useAuthStore } from "@/hooks/useAuthStore";
+import { useProfileStore } from "@/hooks/useProfileStore";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import {
   ChevronRight,
   CreditCard,
   DollarSign,
   Edit,
+  LogOut,
   Phone,
   Receipt,
   Settings,
   User,
   Users,
 } from "lucide-react-native";
-import React from "react";
+import React, { useEffect } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,19 +31,42 @@ import {
 export default function ProfileScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  // const isAuthenticated = true;
+  const { signOut } = useAuthStore();
+  const { profile, fetchProfile, isLoading, error } = useProfileStore();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      console.log("Starting profile fetch...");
+      try {
+        await fetchProfile();
+      } catch (error) {
+        console.error("Error loading profile:", error);
+      }
+    };
+
+    loadProfile();
+  }, [fetchProfile]);
 
   const handleSignIn = () => {
     router.push("/(auth)/login");
   };
 
   const handleEditProfile = () => {
-    router.push("/(auth)/profile");
+    router.push("/profile-setup" as any);
   };
 
   const handlePaymentMethods = () => {
-    router.push("/(profile)/payment-methods");
+    router.push("/payment-methods" as any);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.replace("/(auth)/login");
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    }
   };
 
   const renderProfileOption = (
@@ -53,6 +82,42 @@ export default function ProfileScreen() {
       <ChevronRight size={20} color={colors.textLight} />
     </TouchableOpacity>
   );
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Error loading profile: {error}</Text>
+        <TouchableOpacity
+          style={[styles.button, styles.retryButton]}
+          onPress={fetchProfile}
+        >
+          <Text style={styles.buttonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>No profile found</Text>
+        <TouchableOpacity
+          style={[styles.button, styles.retryButton]}
+          onPress={() => router.push("/(auth)/profile-setup")}
+        >
+          <Text style={styles.buttonText}>Create Profile</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -83,23 +148,21 @@ export default function ProfileScreen() {
     >
       <View style={styles.header}>
         <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <User size={40} color={colors.primary} />
-          </View>
+          <Avatar size={100} />
           <TouchableOpacity
             style={styles.editAvatarButton}
-            onPress={handleEditProfile}
+            onPress={() => router.push("/(auth)/edit-avatar" as any)}
           >
             <Edit size={16} color={colors.card} />
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.name}>{user?.name || "User"}</Text>
-        <Text style={styles.phoneNumber}>{user?.phoneNumber}</Text>
+        <Text style={styles.name}>{profile?.username || "User"}</Text>
+        <Text style={styles.phoneNumber}>{user?.email}</Text>
 
         <TouchableOpacity
           style={styles.editProfileButton}
-          onPress={handleEditProfile}
+          onPress={() => router.push("/(auth)/profile-setup" as any)}
         >
           <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>
@@ -123,7 +186,13 @@ export default function ProfileScreen() {
         {renderProfileOption(
           <Settings size={20} color={colors.primary} />,
           "Settings",
-          () => router.push("/settings")
+          () => router.push("/settings" as any)
+        )}
+
+        {renderProfileOption(
+          <LogOut size={20} color={colors.error} />,
+          "Sign Out",
+          handleSignOut
         )}
       </View>
 
@@ -168,6 +237,21 @@ export default function ProfileScreen() {
           <Text style={styles.statValue}>5</Text>
           <Text style={styles.statLabel}>Groups</Text>
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Profile</Text>
+        <TouchableOpacity
+          style={styles.option}
+          onPress={() => router.push("/(tabs)/profile/edit" as any)}
+        >
+          <Text style={styles.optionText}>Edit Profile</Text>
+          <Ionicons
+            name="chevron-forward"
+            size={24}
+            color={colors.textSecondary}
+          />
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -333,6 +417,40 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   signInButton: {
+    minWidth: 200,
+  },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  optionText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: colors.text,
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.error,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  button: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 20,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.card,
+  },
+  retryButton: {
     minWidth: 200,
   },
 });
