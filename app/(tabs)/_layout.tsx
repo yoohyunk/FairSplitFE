@@ -8,7 +8,7 @@ export default function TabLayout() {
   const router = useRouter();
 
   const handleScanPress = () => {
-    router.push("/scan");
+    router.push("/scan-tab");
   };
 
   return (
@@ -70,7 +70,7 @@ export default function TabLayout() {
               // Prevent default action
               e.preventDefault();
               // Navigate to scan screen
-              router.push("/scan");
+              router.push("/scan-tab");
             },
           }}
         />
