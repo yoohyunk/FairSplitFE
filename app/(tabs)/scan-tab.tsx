@@ -1,8 +1,10 @@
 import { supabase } from "@/app/supabaseClient";
+import { Button } from "@/components/Button";
 import { colors } from "@/constants/Colors";
 import { Buffer } from "buffer";
 import { CameraView as ExpoCamera, useCameraPermissions } from "expo-camera";
 import * as FileSystem from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -84,6 +86,64 @@ export default function ScanTabScreen() {
     }
   };
 
+  const handlePickImage = async () => {
+    try {
+      setIsLoading(true);
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Please grant permission to access your photos."
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+      if (!result.canceled) {
+        const uri = result.assets[0].uri;
+        // 1. Read local file as base64
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        // 2. Convert base64 to buffer
+        const buffer = Buffer.from(base64, "base64");
+        // 3. Upload buffer to supabase storage
+        const fileName = `${Date.now()}-${Math.random()
+          .toString(36)
+          .substring(2)}.jpg`;
+        const filePath = `receipts/${fileName}`;
+        const { data, error } = await supabase.storage
+          .from("receipts")
+          .upload(filePath, buffer, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: "image/jpeg",
+          });
+        if (error) {
+          throw error;
+        }
+        // 4. Get public URL of uploaded file
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("receipts").getPublicUrl(filePath);
+        // Navigate to split details screen with the image URL
+        router.push({
+          pathname: "/split-details" as any,
+          params: { receiptUrl: publicUrl },
+        });
+      }
+    } catch (error: any) {
+      console.error("Error uploading receipt from gallery:", error);
+      Alert.alert("Error", error.message || "Failed to process receipt");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!permission) {
     return (
       <View style={styles.container}>
@@ -121,6 +181,14 @@ export default function ScanTabScreen() {
               <View style={styles.captureButtonInner} />
             )}
           </TouchableOpacity>
+          <View style={{ height: 16 }} />
+          <Button
+            title="갤러리에서 선택"
+            onPress={handlePickImage}
+            variant="outline"
+            disabled={isLoading}
+            fullWidth
+          />
         </View>
       </ExpoCamera>
     </SafeAreaView>

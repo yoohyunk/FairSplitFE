@@ -143,6 +143,17 @@ export default function SplitDetailsScreen() {
   };
 
   const handleReviewConfirm = async (data: ReceiptData) => {
+    // Navigate to the new people selection page
+    router.push({
+      pathname: "/add-people" as any,
+      params: {
+        receiptData: JSON.stringify(data),
+        receiptUrl: receiptUrl,
+      },
+    });
+  };
+
+  const handleFinalSubmit = async () => {
     setIsLoading(true);
     try {
       // TODO: Update receipt data with edited values

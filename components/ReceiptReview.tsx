@@ -17,6 +17,10 @@ interface Item {
   price_with_discount: string;
   price_without_discount: string;
   quantity: string;
+  category?: string;
+  total_price_with_discount?: string;
+  total_price_without_discount?: string;
+  unit_price?: string;
 }
 
 interface ReceiptData {
@@ -132,6 +136,16 @@ const ReceiptReview: React.FC<ReceiptReviewProps> = ({
     });
   };
 
+  const hasDiscount = (item: Item) => {
+    const originalPrice = parseFloat(item.price_without_discount);
+    const discountedPrice = parseFloat(item.price_with_discount);
+    return originalPrice > discountedPrice;
+  };
+
+  const formatPrice = (price: string) => {
+    return `${data.currency} ${parseFloat(price).toFixed(2)}`;
+  };
+
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Review Receipt</Text>
@@ -139,94 +153,126 @@ const ReceiptReview: React.FC<ReceiptReviewProps> = ({
       {/* Items List */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Items</Text>
-        {data.items.map((item) => (
-          <View key={item.id} style={styles.itemContainer}>
-            {editingItem === item.id ? (
-              <View style={styles.editForm}>
-                <TextInput
-                  style={styles.input}
-                  value={item.name}
-                  onChangeText={(text) =>
-                    setData({
-                      ...data,
-                      items: data.items.map((i) =>
-                        i.id === item.id ? { ...i, name: text } : i
-                      ),
-                    })
-                  }
-                  placeholder="Item name"
-                />
-                <TextInput
-                  style={styles.input}
-                  value={item.price_with_discount}
-                  onChangeText={(text) =>
-                    setData({
-                      ...data,
-                      items: data.items.map((i) =>
-                        i.id === item.id
-                          ? { ...i, price_with_discount: text || "0" }
-                          : i
-                      ),
-                    })
-                  }
-                  keyboardType="numeric"
-                  placeholder="Price"
-                />
-                <TextInput
-                  style={styles.input}
-                  value={item.quantity}
-                  onChangeText={(text) =>
-                    setData({
-                      ...data,
-                      items: data.items.map((i) =>
-                        i.id === item.id ? { ...i, quantity: text || "1" } : i
-                      ),
-                    })
-                  }
-                  keyboardType="numeric"
-                  placeholder="Quantity"
-                />
-                <Button
-                  title="Save"
-                  onPress={() => handleItemSave(item.id)}
-                  size="small"
-                />
+        {data.items
+          .filter(
+            (item) =>
+              item.category !== "Discount" &&
+              !item.name.toLowerCase().includes("discount")
+          )
+          .map((item) => {
+            const itemHasDiscount = hasDiscount(item);
+            return (
+              <View key={item.id} style={styles.itemContainer}>
+                {editingItem === item.id ? (
+                  <View style={styles.editForm}>
+                    <TextInput
+                      style={styles.input}
+                      value={item.name}
+                      onChangeText={(text) =>
+                        setData({
+                          ...data,
+                          items: data.items.map((i) =>
+                            i.id === item.id ? { ...i, name: text } : i
+                          ),
+                        })
+                      }
+                      placeholder="Item name"
+                    />
+                    <TextInput
+                      style={styles.input}
+                      value={item.price_with_discount}
+                      onChangeText={(text) =>
+                        setData({
+                          ...data,
+                          items: data.items.map((i) =>
+                            i.id === item.id
+                              ? { ...i, price_with_discount: text || "0" }
+                              : i
+                          ),
+                        })
+                      }
+                      keyboardType="numeric"
+                      placeholder="Price"
+                    />
+                    <TextInput
+                      style={styles.input}
+                      value={item.quantity}
+                      onChangeText={(text) =>
+                        setData({
+                          ...data,
+                          items: data.items.map((i) =>
+                            i.id === item.id
+                              ? { ...i, quantity: text || "1" }
+                              : i
+                          ),
+                        })
+                      }
+                      keyboardType="numeric"
+                      placeholder="Quantity"
+                    />
+                    <Button
+                      title="Save"
+                      onPress={() => handleItemSave(item.id)}
+                      size="small"
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.itemRow}>
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      <View style={styles.priceContainer}>
+                        {itemHasDiscount ? (
+                          <>
+                            <Text style={styles.originalPrice}>
+                              {formatPrice(item.price_without_discount)} x{" "}
+                              {item.quantity}
+                            </Text>
+                            <Text style={styles.discountedPrice}>
+                              {formatPrice(item.price_with_discount)} x{" "}
+                              {item.quantity}
+                            </Text>
+                          </>
+                        ) : (
+                          <Text style={styles.itemPrice}>
+                            {formatPrice(item.price_with_discount)} x{" "}
+                            {item.quantity}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    <View style={styles.itemActions}>
+                      <Text style={styles.itemTotal}>
+                        {formatPrice(item.price_with_discount)}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleItemEdit(item.id)}
+                        style={styles.editButton}
+                      >
+                        <Text style={styles.editButtonText}>Edit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteItem(item.id)}
+                        style={styles.deleteButton}
+                      >
+                        <Text style={styles.deleteButtonText}>Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
               </View>
-            ) : (
-              <View style={styles.itemRow}>
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemPrice}>
-                    {data.currency}{" "}
-                    {parseFloat(item.price_with_discount || "0").toFixed(2)} x{" "}
-                    {item.quantity}
-                  </Text>
-                </View>
-                <View style={styles.itemActions}>
-                  <Text style={styles.itemTotal}>
-                    {data.currency}{" "}
-                    {(
-                      parseFloat(item.price_with_discount || "0") *
-                      parseFloat(item.quantity || "1")
-                    ).toFixed(2)}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => handleItemEdit(item.id)}
-                    style={styles.editButton}
-                  >
-                    <Text style={styles.editButtonText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteItem(item.id)}
-                    style={styles.deleteButton}
-                  >
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+            );
+          })}
+
+        {/* Total Discount Display */}
+        {parseFloat(data.total_discount || "0") > 0 && (
+          <View style={styles.discountContainer}>
+            <Text style={styles.discountTitle}>Total Discount Applied</Text>
+            <Text style={styles.discountAmount}>
+              -{data.currency}{" "}
+              {parseFloat(data.total_discount || "0").toFixed(2)}
+            </Text>
           </View>
-        ))}
+        )}
 
         {/* Add New Item Form */}
         <View style={styles.addItemContainer}>
@@ -445,6 +491,40 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 24,
     marginBottom: 32,
+  },
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    marginTop: 4,
+  },
+  originalPrice: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textDecorationLine: "line-through",
+    marginRight: 8,
+  },
+  discountedPrice: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  discountContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  discountTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 8,
+  },
+  discountAmount: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.error,
   },
 });
 
