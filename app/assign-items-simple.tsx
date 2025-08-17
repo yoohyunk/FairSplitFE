@@ -50,7 +50,6 @@ export default function AssignItemsScreen() {
   }>();
 
   const [itemAssignments, setItemAssignments] = useState<ItemAssignment[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const { currentSplit, assignItems } = useSplitStore();
 
   // 데이터 파싱
@@ -59,15 +58,10 @@ export default function AssignItemsScreen() {
     : null;
   const peopleList: string[] = people ? JSON.parse(people) : [];
 
-  // 개발용 로그 (나중에 제거 가능)
-  console.log(
-    "Assign Items - People:",
-    peopleList.length,
-    "Items:",
-    parsedReceiptData?.items?.length,
-    "Assignments:",
-    itemAssignments.length
-  );
+  console.log("=== SIMPLE VERSION ===");
+  console.log("Receipt items:", parsedReceiptData?.items?.length);
+  console.log("People:", peopleList);
+  console.log("Current assignments:", itemAssignments.length);
 
   // 간단한 토글 함수
   const togglePerson = (itemId: string, personEmail: string) => {
@@ -76,35 +70,20 @@ export default function AssignItemsScreen() {
     // 첫 클릭 시 초기화
     if (itemAssignments.length === 0) {
       console.log("First click - creating assignments");
-      console.log("All receipt items:", parsedReceiptData.items);
-
-      const actualItems = parsedReceiptData.items.filter((item) => {
-        const isDiscount =
-          item.category === "Discount" ||
-          item.name.toLowerCase().includes("discount");
-        const priceValue = parseFloat(
-          item.total_price_with_discount ||
-            item.unit_price ||
-            item.price_with_discount ||
-            "0"
-        );
-        const hasValidPrice = priceValue > 0;
-
-        console.log(
-          `Item ${item.id} (${item.name}): isDiscount=${isDiscount}, priceValue=${priceValue}, hasValidPrice=${hasValidPrice}`
-        );
-
-        return !isDiscount && hasValidPrice;
-      });
+      const actualItems = parsedReceiptData.items.filter(
+        (item) =>
+          item.category !== "Discount" &&
+          !item.name.toLowerCase().includes("discount") &&
+          parseFloat(item.total_price_with_discount || item.unit_price || "0") >
+            0
+      );
 
       const newAssignments = actualItems.map((item) => ({
         itemId: item.id.toString(),
         assignedPeople: item.id.toString() === itemId ? [personEmail] : [],
       }));
 
-      console.log("Setting new assignments:", newAssignments);
       setItemAssignments(newAssignments);
-      console.log("setItemAssignments called, should re-render now");
       return;
     }
 
@@ -131,58 +110,6 @@ export default function AssignItemsScreen() {
     return assignment?.assignedPeople || [];
   };
 
-  // 완료 처리 함수
-  const handleComplete = async () => {
-    if (!currentSplit) {
-      Alert.alert("Error", "No split found. Please go back and try again.");
-      return;
-    }
-
-    if (itemAssignments.length === 0) {
-      Alert.alert(
-        "Error",
-        "Please assign at least one item before completing."
-      );
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // 백엔드 API 형식으로 변환
-      const assignments = itemAssignments
-        .filter((assignment) => assignment.assignedPeople.length > 0)
-        .map((assignment) => ({
-          receipt_item_id: parseInt(assignment.itemId),
-          participant_emails: assignment.assignedPeople,
-        }));
-
-      console.log("Sending assignments to backend:", assignments);
-
-      // 백엔드 API 호출
-      const success = await assignItems(currentSplit.id, assignments);
-
-      if (success) {
-        console.log("✅ Assignments saved successfully!");
-        // 다음 화면으로 이동 (split-preview)
-        router.push({
-          pathname: "/split-preview" as any,
-          params: {
-            receiptData: receiptData,
-            people: people,
-            assignments: JSON.stringify(itemAssignments),
-          },
-        });
-      } else {
-        Alert.alert("Error", "Failed to save assignments. Please try again.");
-      }
-    } catch (error: any) {
-      console.error("Assignment error:", error);
-      Alert.alert("Error", error.message || "Failed to complete assignment");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   if (!parsedReceiptData) {
     return (
       <SafeAreaView style={styles.container}>
@@ -201,17 +128,6 @@ export default function AssignItemsScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.content}>
         <Text style={styles.title}>Assign Items (Simple)</Text>
-
-        {/* 테스트 버튼 */}
-        <TouchableOpacity
-          style={styles.testButton}
-          onPress={() => {
-            console.log("🚨 TEST BUTTON CLICKED!");
-            alert("Test button works!");
-          }}
-        >
-          <Text style={styles.testButtonText}>🚨 TEST BUTTON</Text>
-        </TouchableOpacity>
 
         {/* 아이템 목록 */}
         {actualItems.map((item) => {
@@ -257,8 +173,10 @@ export default function AssignItemsScreen() {
         {/* 완료 버튼 */}
         <Button
           title="Complete Assignment"
-          onPress={handleComplete}
-          loading={isLoading}
+          onPress={() => {
+            console.log("Complete button pressed");
+            router.back();
+          }}
           size="large"
           fullWidth
         />

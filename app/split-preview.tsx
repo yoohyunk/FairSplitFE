@@ -1,6 +1,7 @@
 import { supabase } from "@/app/supabaseClient";
 import { Button } from "@/components/Button";
 import { colors } from "@/constants/Colors";
+import { useSplitStore } from "@/hooks/useSplitStore";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -63,6 +64,10 @@ export default function SplitPreviewScreen() {
   const [hasAgreed, setHasAgreed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
+  const [calculatedCosts, setCalculatedCosts] = useState<any>(null);
+
+  const { currentSplit, calculateSplit, agreeToSplit, finalizeSplit } =
+    useSplitStore();
 
   const parsedReceiptData: ReceiptData = useMemo(() => {
     return receiptData ? JSON.parse(receiptData) : null;
@@ -94,8 +99,36 @@ export default function SplitPreviewScreen() {
     getCurrentUserEmail();
   }, []);
 
-  // Calculate costs for each person
+  // Calculate costs when component mounts or when currentSplit changes
+  useEffect(() => {
+    const fetchCalculatedCosts = async () => {
+      if (currentSplit) {
+        const costs = await calculateSplit(currentSplit.id);
+        if (costs) {
+          setCalculatedCosts(costs);
+        }
+      }
+    };
+
+    fetchCalculatedCosts();
+  }, [currentSplit, calculateSplit]);
+
+  // Calculate costs for each person (fallback to local calculation if backend fails)
   const personCosts: PersonCost[] = useMemo(() => {
+    if (calculatedCosts) {
+      // Use backend calculated costs
+      return calculatedCosts.participant_costs.map((pc: any) => ({
+        email: pc.email,
+        totalCost: pc.total_cost,
+        items: pc.items.map((item: any) => ({
+          itemId: item.item_id,
+          itemName: item.item_name,
+          cost: item.cost,
+        })),
+      }));
+    }
+
+    // Fallback to local calculation
     if (!parsedReceiptData || !itemAssignments.length) return [];
 
     const costs: { [email: string]: PersonCost } = {};
@@ -164,10 +197,27 @@ export default function SplitPreviewScreen() {
     }
 
     return Object.values(costs);
-  }, [parsedReceiptData, itemAssignments, peopleList]);
+  }, [parsedReceiptData, itemAssignments, peopleList, calculatedCosts]);
 
-  const handleAgree = () => {
-    setHasAgreed(!hasAgreed);
+  const handleAgree = async () => {
+    if (!currentSplit) {
+      Alert.alert("Error", "No split found");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const success = await agreeToSplit(currentSplit.id);
+      if (success) {
+        setHasAgreed(true);
+      } else {
+        Alert.alert("Error", "Failed to agree to split");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to agree to split");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleFinalize = async () => {
@@ -179,12 +229,20 @@ export default function SplitPreviewScreen() {
       return;
     }
 
+    if (!currentSplit) {
+      Alert.alert("Error", "No split found");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // TODO: Send final split data to backend
-      console.log("Finalizing split with agreement from:", currentUserEmail);
-      console.log("Person costs:", personCosts);
-      router.push("/(tabs)");
+      const success = await finalizeSplit(currentSplit.id);
+      if (success) {
+        Alert.alert("Success", "Split finalized successfully!");
+        router.push("/(tabs)");
+      } else {
+        Alert.alert("Error", "Failed to finalize split");
+      }
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to finalize split");
     } finally {
@@ -280,6 +338,7 @@ export default function SplitPreviewScreen() {
                       hasAgreed && styles.agreedButton,
                     ]}
                     onPress={handleAgree}
+                    disabled={isLoading}
                   >
                     <Text
                       style={[

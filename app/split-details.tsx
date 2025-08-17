@@ -2,6 +2,7 @@ import { supabase } from "@/app/supabaseClient";
 import { Button } from "@/components/Button";
 import ReceiptReview from "@/components/ReceiptReview";
 import { colors } from "@/constants/Colors";
+import { useSplitStore } from "@/hooks/useSplitStore";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -45,6 +46,8 @@ export default function SplitDetailsScreen() {
   const [step, setStep] = useState<"details" | "review">("details");
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
+  const { createSplit, error, clearError } = useSplitStore();
+
   const handleSubmit = async () => {
     if (!title.trim()) {
       Alert.alert("Error", "Please enter a title");
@@ -52,38 +55,24 @@ export default function SplitDetailsScreen() {
     }
 
     setIsLoading(true);
+    clearError();
+
     try {
-      // 1. Get access token
+      // 1. Create split using the new store
+      const splitId = await createSplit(title.trim(), description.trim());
+
+      if (!splitId) {
+        throw new Error("Failed to create split");
+      }
+
+      // 2. Upload receipt image and link to split
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
       if (sessionError) throw sessionError;
+
       const accessToken = sessionData.session?.access_token;
       if (!accessToken) throw new Error("No access token");
 
-      // 2. Create split
-      const splitResponse = await fetch(
-        "http://192.168.1.65:8000/api/splits/",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            name: title.trim(),
-            description: description.trim(),
-          }),
-        }
-      );
-
-      if (!splitResponse.ok) {
-        const errorData = await splitResponse.json();
-        throw new Error(errorData.detail || "Failed to create split");
-      }
-
-      const splitData = await splitResponse.json();
-
-      // 3. Upload receipt image
       const scanResponse = await fetch(
         "http://192.168.1.65:8000/api/scan/scan/",
         {
@@ -94,7 +83,7 @@ export default function SplitDetailsScreen() {
           },
           body: JSON.stringify({
             image_url: receiptUrl,
-            split_id: splitData.id,
+            split_id: splitId,
             currency,
           }),
         }
@@ -108,7 +97,7 @@ export default function SplitDetailsScreen() {
       const receipt = await scanResponse.json();
       console.log("Receipt processed:", receipt);
 
-      // 4. Set receipt data and move to review step
+      // 3. Set receipt data and move to review step
       setReceiptData({
         items: receipt.items.map((item: any) => ({
           id: item.id || Date.now().toString(),
@@ -134,6 +123,7 @@ export default function SplitDetailsScreen() {
         receiptType: receipt.receipt_type || "receipt",
         total_discount: (receipt.total_discount || "0").toString(),
       });
+
       setStep("review");
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to save split details");

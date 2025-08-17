@@ -2,6 +2,7 @@ import { supabase } from "@/app/supabaseClient";
 import { Button } from "@/components/Button";
 import { colors } from "@/constants/Colors";
 import { useFriendsStore } from "@/hooks/useFriendsStore";
+import { useSplitStore } from "@/hooks/useSplitStore";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -48,6 +49,7 @@ export default function AddPeopleScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
   const { friends } = useFriendsStore();
+  const { currentSplit, addParticipants } = useSplitStore();
 
   const parsedReceiptData: ReceiptData = receiptData
     ? JSON.parse(receiptData)
@@ -101,16 +103,28 @@ export default function AddPeopleScreen() {
   };
 
   const handleComplete = async () => {
+    if (!currentSplit) {
+      Alert.alert("Error", "No split found. Please go back and try again.");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Navigate to assign items page
-      router.push({
-        pathname: "/assign-items" as any,
-        params: {
-          receiptData: receiptData,
-          people: JSON.stringify(people),
-        },
-      });
+      // Add participants to the split using the new store
+      const success = await addParticipants(currentSplit.id, people);
+
+      if (success) {
+        // Navigate to assign items page
+        router.push({
+          pathname: "/assign-items" as any,
+          params: {
+            receiptData: receiptData,
+            people: JSON.stringify(people),
+          },
+        });
+      } else {
+        Alert.alert("Error", "Failed to add participants to split");
+      }
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to complete");
     } finally {
